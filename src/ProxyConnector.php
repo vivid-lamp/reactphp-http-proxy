@@ -5,7 +5,6 @@ namespace Clue\React\HttpProxy;
 use Exception;
 use InvalidArgumentException;
 use RuntimeException;
-use RingCentral\Psr7;
 use React\Promise;
 use React\Promise\Deferred;
 use React\Socket\ConnectionInterface;
@@ -184,7 +183,8 @@ class ProxyConnector implements ConnectorInterface
 
                     // try to parse headers as response message
                     try {
-                        $response = Psr7\parse_response(substr($buffer, 0, $pos));
+                        $responseParser = new ResponseParser(substr($buffer, 0, $pos));
+                        $response = $responseParser->getResponse();
                     } catch (Exception $e) {
                         $deferred->reject(new RuntimeException(
                             'Connection to ' . $uri . ' failed because proxy returned invalid response (EBADMSG)',
@@ -195,18 +195,18 @@ class ProxyConnector implements ConnectorInterface
                         return;
                     }
 
-                    if ($response->getStatusCode() === 407) {
+                    if ($response['status'] === 407) {
                         // map status code 407 (Proxy Authentication Required) to EACCES
                         $deferred->reject(new RuntimeException(
-                            'Connection to ' . $uri . ' failed because proxy denied access with HTTP error code ' . $response->getStatusCode() . ' (' . $response->getReasonPhrase() . ') (EACCES)',
+                            'Connection to ' . $uri . ' failed because proxy denied access with HTTP error code ' . $response['status'] . ' (' . $response['reason_phrase'] . ') (EACCES)',
                             defined('SOCKET_EACCES') ? SOCKET_EACCES : 13
                         ));
                         $stream->close();
                         return;
-                    } elseif ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+                    } elseif ($response['status'] < 200 || $response['status'] >= 300) {
                         // map non-2xx status code to ECONNREFUSED
                         $deferred->reject(new RuntimeException(
-                            'Connection to ' . $uri . ' failed because proxy refused connection with HTTP error code ' . $response->getStatusCode() . ' (' . $response->getReasonPhrase() . ') (ECONNREFUSED)',
+                            'Connection to ' . $uri . ' failed because proxy refused connection with HTTP error code ' . $response['status'] . ' (' . $response['reason_phrase'] . ') (ECONNREFUSED)',
                             defined('SOCKET_ECONNREFUSED') ? SOCKET_ECONNREFUSED : 111
                         ));
                         $stream->close();
