@@ -4,8 +4,7 @@ namespace Clue\React\HttpProxy;
 
 use Exception;
 use InvalidArgumentException;
-use RuntimeException;
-use RingCentral\Psr7;
+use React\Http\Message\Response;
 use React\Promise;
 use React\Promise\Deferred;
 use React\Socket\ConnectionInterface;
@@ -13,6 +12,7 @@ use React\Socket\Connector;
 use React\Socket\ConnectorInterface;
 use React\Socket\FixedUriConnector;
 use React\Socket\UnixConnector;
+use RuntimeException;
 
 /**
  * A simple Connector that uses an HTTP CONNECT proxy to create plain TCP/IP connections to any destination
@@ -184,7 +184,7 @@ class ProxyConnector implements ConnectorInterface
 
                     // try to parse headers as response message
                     try {
-                        $response = Psr7\parse_response(substr($buffer, 0, $pos));
+                        $response = Response::parseMessage(substr($buffer, 0, $pos));
                     } catch (Exception $e) {
                         $deferred->reject(new RuntimeException(
                             'Connection to ' . $uri . ' failed because proxy returned invalid response (EBADMSG)',
